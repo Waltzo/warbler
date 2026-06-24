@@ -31,6 +31,7 @@ export default function JobDetail() {
   const [log, setLog] = useState("");
   const [gpus, setGpus] = useState<GpuStat[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
+  const stickBottom = useRef(true); // only auto-scroll when user is at the bottom
 
   useEffect(() => {
     if (!id) return;
@@ -57,8 +58,16 @@ export default function JobDetail() {
   }, []);
 
   useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+    if (stickBottom.current && logRef.current)
+      logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [log]);
+
+  const onLogScroll = () => {
+    const el = logRef.current;
+    if (!el) return;
+    // "at bottom" with a small tolerance; scrolling up disables auto-scroll.
+    stickBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  };
 
   if (!status) return <p>불러오는 중…</p>;
 
@@ -125,7 +134,7 @@ export default function JobDetail() {
 
       <div className="card">
         <h2>로그</h2>
-        <div className="log" ref={logRef}>{log || "(출력 대기 중…)"}</div>
+        <div className="log" ref={logRef} onScroll={onLogScroll}>{log || "(출력 대기 중…)"}</div>
       </div>
     </div>
   );
