@@ -111,7 +111,38 @@ export const api = {
     http.patch<Segment>(`/corpus/${id}/segments/${segId}`, body).then((r) => r.data),
   exportCorpus: (id: string, body: { dataset_id: string; only_reviewed: boolean }) =>
     http.post<DatasetInfo>(`/corpus/${id}/export`, body).then((r) => r.data),
+
+  inferModels: () => http.get<InferModel[]>("/infer/models").then((r) => r.data),
+  infer: (audio: File, targets: InferTarget[], gpu_index: number, language: string) => {
+    const fd = new FormData();
+    fd.append("audio", audio);
+    fd.append("targets", JSON.stringify(targets));
+    fd.append("gpu_index", String(gpu_index));
+    fd.append("language", language);
+    return http.post<{ results: InferResult[] }>("/infer", fd).then((r) => r.data);
+  },
 };
+
+export interface InferModel {
+  job_id: string;
+  name: string;
+  model_type: "whisper" | "wav2vec2";
+  base_model: string;
+  lora: boolean;
+}
+export interface InferTarget {
+  kind: "finetuned" | "base";
+  label?: string;
+  job_id?: string;
+  model_type?: string;
+  base_model?: string;
+}
+export interface InferResult {
+  label: string;
+  text?: string;
+  ms?: number;
+  error?: string;
+}
 
 /** Subscribe to a job's SSE stream. Returns an unsubscribe fn. */
 export function subscribeJob(

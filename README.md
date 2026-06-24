@@ -69,6 +69,18 @@ CUDA_VISIBLE_DEVICES=2 python -m prep.transcribe \
   --corpus-dir datasets/<id> --run-dir runs/<job_id> --model large-v3 --language ko
 ```
 
+## 파인튜닝 확인 (Test 페이지)
+
+학습이 잘 됐는지 직접 확인:
+
+1. **모델 선택** — 완료된 학습 잡 드롭다운(저장된 `runs/<id>/model/`). LoRA면 base+adapter 자동 합쳐 로드.
+2. **A/B 비교** 체크 → base 모델과 동시 전사.
+3. **오디오 업로드** → Transcribe → 파인튜닝 vs base 전사 결과 나란히 + 소요 시간.
+
+모델은 백엔드에 캐시(최대 3개) → 반복/비교 빠름. GPU 지정 가능(`cuda:<index>` 직접). 첫 호출만 로드로 느림.
+
+학습 중 정량 지표(WER/CER)는 JobDetail 차트서 확인 — eval셋 기준 수치가 내려가면 학습된 것.
+
 ## 데이터셋 형식
 
 manifest = `.jsonl` 또는 `.csv`, 각 행:

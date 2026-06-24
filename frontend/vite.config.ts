@@ -41,6 +41,7 @@ export default defineConfig({
       "/jobs": target,
       "/system": target,
       "/corpus": target,
+      "/infer": target,
       "/health": target,
     },
   },
