@@ -1,5 +1,38 @@
-data/
-datasets/*
-
-.vscode/
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
 backend/.venv/
+.python-version
+
+# ---- Node / frontend ----
+node_modules/
+frontend/dist/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- Project artifacts ----
+data/
+# 학습 잡 산출물 (체크포인트, 로그, 메트릭, 최종 모델)
+runs/
+# 등록 데이터셋 / 코퍼스 (오디오 clips, segments, manifest, 레지스트리)
+datasets/
+# 다운로드된 모델 가중치 캐시
+*.bin
+*.safetensors
+*.ckpt
+*.pt
+.cache/
+hf_cache/
+
+# ---- Editor / OS ----
+.vscode/
+.idea/
+.DS_Store
+*.swp

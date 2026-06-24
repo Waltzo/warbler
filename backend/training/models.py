@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from .data import CTCCollator, WhisperCollator
+from .data import CTCCollator, WhisperCollator, load_audio
 from .metrics import compute_wer_cer
 
 
@@ -55,9 +55,9 @@ def _build_whisper(cfg: dict) -> ModelBundle:
         model = _apply_lora(model, cfg, ["q_proj", "v_proj"])
 
     def preprocess(batch: dict) -> dict:
-        audio = batch["audio"]
+        audio = load_audio(batch["audio"])
         batch["input_features"] = processor.feature_extractor(
-            audio["array"], sampling_rate=audio["sampling_rate"]
+            audio, sampling_rate=16000
         ).input_features[0]
         batch["labels"] = processor.tokenizer(batch["text"]).input_ids
         return batch
@@ -139,9 +139,9 @@ def _build_wav2vec2(cfg: dict, train_texts: list[str], run_dir: Optional[Path]) 
         model = _apply_lora(model, cfg, ["q_proj", "v_proj", "k_proj", "out_proj"])
 
     def preprocess(batch: dict) -> dict:
-        audio = batch["audio"]
+        audio = load_audio(batch["audio"])
         batch["input_values"] = processor(
-            audio["array"], sampling_rate=audio["sampling_rate"]
+            audio, sampling_rate=16000
         ).input_values[0]
         text = _CHARS_TO_STRIP.sub("", batch["text"]).lower()
         batch["labels"] = processor(text=text).input_ids

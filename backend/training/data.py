@@ -46,13 +46,25 @@ def read_manifest(manifest_path: str, audio_root: str | None = None,
     return rows
 
 
+def load_audio(path: str):
+    """Load an audio file as a 16kHz mono float32 numpy array.
+
+    Done with librosa (not datasets' Audio feature) to avoid the torchcodec
+    dependency newer `datasets` requires for on-the-fly decoding."""
+    import librosa
+
+    audio, _ = librosa.load(path, sr=SAMPLING_RATE, mono=True)
+    return audio
+
+
 def build_dataset(manifest_path: str, audio_root: str | None, eval_ratio: float,
                   audio_key: str | None = None, text_key: str | None = None):
-    """Return (train_ds, eval_ds) HF Datasets with a 16kHz Audio column."""
-    from datasets import Audio, Dataset
+    """Return (train_ds, eval_ds) HF Datasets. The "audio" column holds file
+    paths (strings); decoding happens in the preprocess fn via load_audio()."""
+    from datasets import Dataset
 
     rows = read_manifest(manifest_path, audio_root, audio_key, text_key)
-    ds = Dataset.from_list(rows).cast_column("audio", Audio(sampling_rate=SAMPLING_RATE))
+    ds = Dataset.from_list(rows)
 
     if eval_ratio and 0 < eval_ratio < 1 and len(ds) > 1:
         split = ds.train_test_split(test_size=eval_ratio, seed=42)
