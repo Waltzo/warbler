@@ -97,11 +97,21 @@ def _build_whisper(cfg: dict) -> ModelBundle:
 _CHARS_TO_STRIP = re.compile(r"[\,\?\.\!\-\;\:\"“”‘’]")
 
 
+def _clean_text(t: str) -> str:
+    """Normalize + strip punctuation. NFC keeps modern syllables composed and
+    old-Hangul (아래아 ㆍ 등) jamo consistent, so the same character maps to a
+    single vocab token. Applied identically for vocab build and label encoding."""
+    import unicodedata
+
+    t = unicodedata.normalize("NFC", t)
+    return _CHARS_TO_STRIP.sub("", t).lower()
+
+
 def _build_vocab(texts: list[str], run_dir: Path) -> str:
     """Build a char-level vocab.json from training transcripts. Returns its path."""
     chars = set()
     for t in texts:
-        t = _CHARS_TO_STRIP.sub("", t).lower()
+        t = _clean_text(t)
         chars.update(t.replace(" ", ""))
     vocab = {c: i for i, c in enumerate(sorted(chars))}
     vocab["|"] = len(vocab)  # word delimiter (space)
@@ -158,7 +168,7 @@ def _build_wav2vec2(cfg: dict, train_texts: list[str], run_dir: Optional[Path]) 
         batch["input_values"] = processor(
             audio, sampling_rate=16000
         ).input_values[0]
-        text = _CHARS_TO_STRIP.sub("", batch["text"]).lower()
+        text = _clean_text(batch["text"])
         batch["labels"] = processor(text=text).input_ids
         return batch
 

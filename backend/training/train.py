@@ -44,7 +44,12 @@ def _run(cfg: dict, run_dir: Path) -> None:
     )
     print(f"[train] train={len(train_ds)} eval={len(eval_ds) if eval_ds else 0}", flush=True)
 
-    bundle = build_bundle(cfg, train_texts=train_ds["text"], run_dir=run_dir)
+    # Vocab must cover EVERY character in the data (train + eval). Building it
+    # from train only makes eval-only chars (e.g. 씬) decode/encode to [UNK].
+    all_texts = list(train_ds["text"])
+    if eval_ds is not None:
+        all_texts += list(eval_ds["text"])
+    bundle = build_bundle(cfg, train_texts=all_texts, run_dir=run_dir)
 
     print("[train] preprocessing", flush=True)
     remove_cols = train_ds.column_names
