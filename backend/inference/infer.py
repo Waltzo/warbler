@@ -81,9 +81,14 @@ def _load_wav2vec2(source, base_model, lora, device):
 
     if lora:
         from peft import PeftModel
-        model = Wav2Vec2ForCTC.from_pretrained(base_model)
-        model = PeftModel.from_pretrained(model, source)
+        # Adapter was trained on a rebuilt vocab; size the base CTC head to match
+        # the saved processor before loading the adapter (incl. modules_to_save lm_head).
         processor = Wav2Vec2Processor.from_pretrained(source)
+        model = Wav2Vec2ForCTC.from_pretrained(
+            base_model, vocab_size=len(processor.tokenizer),
+            ignore_mismatched_sizes=True,
+        )
+        model = PeftModel.from_pretrained(model, source)
     else:
         model = Wav2Vec2ForCTC.from_pretrained(source)
         processor = Wav2Vec2Processor.from_pretrained(source)

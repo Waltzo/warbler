@@ -136,7 +136,11 @@ def _build_wav2vec2(cfg: dict, train_texts: list[str], run_dir: Optional[Path]) 
     model.freeze_feature_encoder()
 
     if cfg.get("use_lora"):
-        model = _apply_lora(model, cfg, ["q_proj", "v_proj", "k_proj", "out_proj"])
+        # lm_head must be trained fully (CTC head was reinit for the new vocab);
+        # leaving it frozen at random init makes WER stick at 1.0.
+        model = _apply_lora(model, cfg, ["q_proj", "v_proj", "k_proj", "out_proj"],
+                            modules_to_save=["lm_head"])
+        _force_no_embedding_save(model)
 
     def preprocess(batch: dict) -> dict:
         audio = load_audio(batch["audio"])
@@ -171,7 +175,8 @@ def _build_wav2vec2(cfg: dict, train_texts: list[str], run_dir: Optional[Path]) 
 # ---------------------------------------------------------------------------
 # LoRA
 # ---------------------------------------------------------------------------
-def _apply_lora(model, cfg: dict, default_targets: list[str]):
+def _apply_lora(model, cfg: dict, default_targets: list[str],
+                modules_to_save: list[str] | None = None):
     from peft import LoraConfig, get_peft_model
 
     lconf = LoraConfig(
@@ -179,8 +184,20 @@ def _apply_lora(model, cfg: dict, default_targets: list[str]):
         lora_alpha=cfg.get("lora_alpha", 32),
         lora_dropout=cfg.get("lora_dropout", 0.05),
         target_modules=default_targets,
+        modules_to_save=modules_to_save,
         bias="none",
     )
     model = get_peft_model(model, lconf)
     model.print_trainable_parameters()
     return model
+
+
+def _force_no_embedding_save(peft_model):
+    """PEFT auto-detects the resized CTC head as a 'resized embedding' and tries
+    to save input/output embeddings — which Wav2Vec2 doesn't implement, crashing
+    save_pretrained. The lm_head is already persisted via modules_to_save, so
+    force save_embedding_layers=False on every save call."""
+    import functools
+
+    orig = peft_model.save_pretrained
+    peft_model.save_pretrained = functools.partial(orig, save_embedding_layers=False)
