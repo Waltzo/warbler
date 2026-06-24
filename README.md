@@ -74,14 +74,31 @@ manifest = `.jsonl` 또는 `.csv`, 각 행:
 | `checkpoints/` | 중간 체크포인트 |
 | `model/` | 최종 모델(+processor). LoRA면 adapter |
 
+## 설정 (config.toml)
+
+루트의 `config.toml`에서 port / 기본 GPU 지정:
+```toml
+[server]
+host = "0.0.0.0"
+port = 8000
+
+[gpu]
+default_index = 0   # UI New Training 기본 GPU
+```
+
+우선순위: **환경변수 > config.toml > 기본값**. config 경로는 `STT_CONFIG`로 변경.
+
 ## 환경변수
 
 | 변수 | 기본 | 설명 |
 |------|------|------|
+| `STT_CONFIG` | `<root>/config.toml` | 설정 파일 경로 |
+| `STT_HOST` | config.toml / `0.0.0.0` | 서버 bind host |
+| `STT_PORT` | config.toml / `8000` | 서버 port |
+| `STT_DEFAULT_GPU` | config.toml / `0` | UI 기본 GPU |
 | `STT_ROOT` | repo root | datasets/, runs/ 기준 경로 |
 | `STT_DATASETS_DIR` | `<root>/datasets` | 데이터셋 레지스트리 위치 |
 | `STT_RUNS_DIR` | `<root>/runs` | 잡 산출물 위치 |
-| `STT_DEFAULT_GPU` | `0` | UI 기본 GPU |
 | `STT_PYTHON` | 현재 인터프리터 | train subprocess 실행 파이썬 |
 
 ## 학습 코어 단독 실행 (디버그)
