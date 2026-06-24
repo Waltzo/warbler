@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .. import config
@@ -50,6 +49,8 @@ class TranscribeReq(BaseModel):
 class SegmentPatch(BaseModel):
     text: Optional[str] = None
     reviewed: Optional[bool] = None
+    start: Optional[float] = None
+    end: Optional[float] = None
 
 
 class ExportReq(BaseModel):
@@ -130,22 +131,67 @@ def list_segments(corpus_id: str, only_unreviewed: bool = False,
     return {"total": total, "items": segs[offset: offset + limit]}
 
 
+SR = 16000
+
+
+def _slice_to_wav(source_file: str, start: float, end: float) -> bytes:
+    """Load [start,end] from the source audio (16k mono) and return wav bytes."""
+    import io
+    import librosa
+    import soundfile as sf
+
+    start = max(0.0, start)
+    dur = max(0.01, end - start)
+    audio, _ = librosa.load(source_file, sr=SR, mono=True, offset=start, duration=dur)
+    buf = io.BytesIO()
+    sf.write(buf, audio, SR, format="WAV")
+    return buf.getvalue()
+
+
 @router.get("/{corpus_id}/segments/{seg_id}/audio")
-def segment_audio(corpus_id: str, seg_id: str):
+def segment_audio(corpus_id: str, seg_id: str,
+                  start: Optional[float] = None, end: Optional[float] = None):
+    """Serve the segment audio sliced live from the SOURCE file, so adjusted
+    boundaries (or preview start/end query params) can extend past the original."""
+    from fastapi.responses import Response
+
     d = _require(corpus_id)
-    clip = store.clips_dir(d) / f"{seg_id}.wav"
-    if not clip.exists():
-        raise HTTPException(404, f"clip not found: {seg_id}")
-    return FileResponse(str(clip), media_type="audio/wav")
+    seg = store.get_segment(d, seg_id)
+    if seg is None:
+        raise HTTPException(404, f"segment not found: {seg_id}")
+    s = start if start is not None else seg["start"]
+    e = end if end is not None else seg["end"]
+    try:
+        wav = _slice_to_wav(seg["source_file"], s, e)
+    except Exception as ex:  # noqa: BLE001
+        raise HTTPException(400, f"slice failed: {ex}")
+    return Response(content=wav, media_type="audio/wav")
 
 
 @router.patch("/{corpus_id}/segments/{seg_id}")
 def patch_segment(corpus_id: str, seg_id: str, body: SegmentPatch) -> dict:
     d = _require(corpus_id)
-    seg = store.update_segment(d, seg_id, text=body.text, reviewed=body.reviewed)
+    seg = store.get_segment(d, seg_id)
     if seg is None:
         raise HTTPException(404, f"segment not found: {seg_id}")
-    return seg
+
+    updates = {"text": body.text, "reviewed": body.reviewed}
+
+    # Boundary edit: re-slice the persisted clip from source so export uses it.
+    if body.start is not None or body.end is not None:
+        new_s = body.start if body.start is not None else seg["start"]
+        new_e = body.end if body.end is not None else seg["end"]
+        if new_e <= new_s:
+            raise HTTPException(400, "end must be greater than start")
+        try:
+            wav = _slice_to_wav(seg["source_file"], new_s, new_e)
+        except Exception as ex:  # noqa: BLE001
+            raise HTTPException(400, f"slice failed: {ex}")
+        (store.clips_dir(d) / f"{seg_id}.wav").write_bytes(wav)
+        updates.update({"start": round(new_s, 3), "end": round(new_e, 3),
+                        "duration": round(new_e - new_s, 3)})
+
+    return store.update_segment(d, seg_id, updates)
 
 
 # ---------------------------------------------------------------------------

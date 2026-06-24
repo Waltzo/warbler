@@ -71,17 +71,20 @@ def append_segment(corpus_dir: Path, seg: dict) -> None:
         f.write(json.dumps(seg, ensure_ascii=False) + "\n")
 
 
-def update_segment(corpus_dir: Path, seg_id: str,
-                   text: Optional[str] = None,
-                   reviewed: Optional[bool] = None) -> Optional[dict]:
+def get_segment(corpus_dir: Path, seg_id: str) -> Optional[dict]:
+    for s in read_segments(corpus_dir):
+        if s["seg_id"] == seg_id:
+            return s
+    return None
+
+
+def update_segment(corpus_dir: Path, seg_id: str, updates: dict) -> Optional[dict]:
+    """Merge `updates` into the matching segment and rewrite. Returns it (or None)."""
     segs = read_segments(corpus_dir)
     found = None
     for s in segs:
         if s["seg_id"] == seg_id:
-            if text is not None:
-                s["text"] = text
-            if reviewed is not None:
-                s["reviewed"] = reviewed
+            s.update({k: v for k, v in updates.items() if v is not None})
             found = s
             break
     if found is not None:

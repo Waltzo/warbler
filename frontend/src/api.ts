@@ -114,8 +114,10 @@ export const api = {
     http.get<{ total: number; items: Segment[] }>(`/corpus/${id}/segments`, {
       params: { only_unreviewed: onlyUnreviewed, limit, offset },
     }).then((r) => r.data),
-  segmentAudioUrl: (id: string, segId: string) => `/corpus/${id}/segments/${segId}/audio`,
-  patchSegment: (id: string, segId: string, body: { text?: string; reviewed?: boolean }) =>
+  segmentAudioUrl: (id: string, segId: string, v?: number) =>
+    `/corpus/${id}/segments/${segId}/audio${v ? `?v=${v}` : ""}`,
+  patchSegment: (id: string, segId: string,
+    body: { text?: string; reviewed?: boolean; start?: number; end?: number }) =>
     http.patch<Segment>(`/corpus/${id}/segments/${segId}`, body).then((r) => r.data),
   exportCorpus: (id: string, body: { dataset_id: string; only_reviewed: boolean }) =>
     http.post<DatasetInfo>(`/corpus/${id}/export`, body).then((r) => r.data),

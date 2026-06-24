@@ -143,20 +143,55 @@ export default function CorpusReview() {
 
 function SegmentRow({ cid, seg, onSave }: {
   cid: string; seg: Segment;
-  onSave: (s: Segment, patch: { text?: string; reviewed?: boolean }) => void;
+  onSave: (s: Segment, patch: { text?: string; reviewed?: boolean; start?: number; end?: number }) => void;
 }) {
   const [text, setText] = useState(seg.text);
-  const dirty = text !== seg.text;
+  const [start, setStart] = useState(seg.start);
+  const [end, setEnd] = useState(seg.end);
+  const [ver, setVer] = useState(0); // cache-bust audio after re-slice
+  const textDirty = text !== seg.text;
+  const boundsDirty = start !== seg.start || end !== seg.end;
+
+  const nudge = (which: "start" | "end", delta: number) => {
+    if (which === "start") setStart((v) => Math.max(0, +(v + delta).toFixed(2)));
+    else setEnd((v) => +(v + delta).toFixed(2));
+  };
+  const applyBounds = async () => {
+    if (!boundsDirty || end <= start) return;
+    await onSave(seg, { start, end });
+    setVer(Date.now());
+  };
+
+  const btn = { padding: "2px 6px", fontSize: 12, background: "#e2e8f0", color: "#1a1a1a" };
+
   return (
     <tr style={{ background: seg.reviewed ? "#f0fdf4" : undefined }}>
       <td>
-        <audio controls preload="none" style={{ width: 200 }}
-          src={api.segmentAudioUrl(cid, seg.seg_id)} />
-        <div className="muted">{seg.duration}s</div>
+        <audio controls preload="none" style={{ width: 220 }}
+          src={api.segmentAudioUrl(cid, seg.seg_id, ver)} />
+        <div className="row" style={{ gap: 4, marginTop: 4 }}>
+          <span className="muted" style={{ width: 30 }}>시작</span>
+          <button style={btn} onClick={() => nudge("start", -0.2)}>−</button>
+          <input style={{ width: 70 }} type="number" step="0.1" value={start}
+            onChange={(e) => setStart(Number(e.target.value))} />
+          <button style={btn} onClick={() => nudge("start", 0.2)}>＋</button>
+        </div>
+        <div className="row" style={{ gap: 4, marginTop: 4 }}>
+          <span className="muted" style={{ width: 30 }}>끝</span>
+          <button style={btn} onClick={() => nudge("end", -0.2)}>−</button>
+          <input style={{ width: 70 }} type="number" step="0.1" value={end}
+            onChange={(e) => setEnd(Number(e.target.value))} />
+          <button style={btn} onClick={() => nudge("end", 0.2)}>＋</button>
+        </div>
+        <div className="row" style={{ gap: 6, marginTop: 4 }}>
+          <span className="muted">{(end - start).toFixed(2)}s</span>
+          <button style={{ ...btn, background: boundsDirty ? "#2563eb" : "#cbd5e1", color: "#fff" }}
+            disabled={!boundsDirty || end <= start} onClick={applyBounds}>구간 적용</button>
+        </div>
       </td>
       <td>
         <input value={text} onChange={(e) => setText(e.target.value)}
-          onBlur={() => dirty && onSave(seg, { text })} />
+          onBlur={() => textDirty && onSave(seg, { text })} />
         {seg.draft_text !== text && (
           <div className="muted">초벌: {seg.draft_text}</div>
         )}
