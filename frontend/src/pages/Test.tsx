@@ -16,7 +16,8 @@ export default function Test() {
 
   useEffect(() => {
     api.inferModels().then((m) => { setModels(m); if (m[0]) setJobId(m[0].job_id); });
-    api.gpus().then((g) => { setGpus(g); if (g[0]) setGpuIndex(g[0].index); });
+    api.gpus().then(setGpus);
+    api.info().then((i) => setGpuIndex(i.default_gpu_index));
   }, []);
 
   const selected = useMemo(() => models.find((m) => m.job_id === jobId), [models, jobId]);
@@ -52,7 +53,7 @@ export default function Test() {
 
   return (
     <div>
-      <h1>Test / Compare</h1>
+      <h1>테스트 / 비교</h1>
       <div className="card">
         <h2>1. 모델 선택</h2>
         {models.length === 0 && <p className="muted">완료된 학습 모델 없음. 먼저 학습 끝내야 함.</p>}
@@ -91,7 +92,7 @@ export default function Test() {
         {audioUrl && <div style={{ marginTop: 10 }}><audio controls src={audioUrl} /></div>}
         <div style={{ marginTop: 12 }}>
           <button onClick={run} disabled={!audio || !selected || busy}>
-            {busy ? "전사 중…" : "Transcribe"}
+            {busy ? "전사 중…" : "전사"}
           </button>
           {busy && <span className="muted"> (첫 호출은 모델 로드로 느릴 수 있음)</span>}
         </div>

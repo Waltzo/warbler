@@ -21,7 +21,8 @@ export default function CorpusReview() {
 
   useEffect(() => {
     loadCorpus();
-    api.gpus().then((g) => { setGpus(g); if (g[0]) setTcfg((c) => ({ ...c, gpu_index: g[0].index })); });
+    api.gpus().then(setGpus);
+    api.info().then((i) => setTcfg((c) => ({ ...c, gpu_index: i.default_gpu_index })));
   }, [cid]);
   useEffect(() => { loadSegs(); }, [cid, onlyUnreviewed]);
 
@@ -59,11 +60,11 @@ export default function CorpusReview() {
     }
   };
 
-  if (!corpus) return <p>Loading…</p>;
+  if (!corpus) return <p>불러오는 중…</p>;
 
   return (
     <div>
-      <h1>Corpus: {corpus.corpus_id}</h1>
+      <h1>코퍼스: {corpus.corpus_id}</h1>
       <div className="card">
         <div className="muted">
           files {corpus.num_files} · segments {corpus.segments} · reviewed {corpus.reviewed}/{corpus.segments}
@@ -98,14 +99,14 @@ export default function CorpusReview() {
           </div>
         </div>
         <div style={{ marginTop: 12 }}>
-          <button onClick={startTranscribe}>Start transcription</button>
+          <button onClick={startTranscribe}>전사 시작</button>
           <span className="muted"> (기존 segments 있으면 덮어씀)</span>
         </div>
       </div>
 
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
-          <h2 style={{ margin: 0 }}>2. 교정 ({total} segments)</h2>
+          <h2 style={{ margin: 0 }}>2. 교정 (세그먼트 {total}개)</h2>
           <label className="row" style={{ margin: 0 }}>
             <input type="checkbox" style={{ width: "auto" }} checked={onlyUnreviewed}
               onChange={(e) => setOnlyUnreviewed(e.target.checked)} />
@@ -113,7 +114,7 @@ export default function CorpusReview() {
           </label>
         </div>
         <table>
-          <thead><tr><th style={{ width: 220 }}>audio</th><th>text</th><th style={{ width: 90 }}>검토</th></tr></thead>
+          <thead><tr><th style={{ width: 220 }}>오디오</th><th>텍스트</th><th style={{ width: 90 }}>검토</th></tr></thead>
           <tbody>
             {segs.map((s) => (
               <SegmentRow key={s.seg_id} cid={cid} seg={s} onSave={save} />
@@ -126,12 +127,12 @@ export default function CorpusReview() {
       </div>
 
       <div className="card">
-        <h2>3. Export → 데이터셋 등록</h2>
+        <h2>3. 내보내기 → 데이터셋 등록</h2>
         <p className="muted">검토완료(reviewed) segment만 manifest로 내보내 학습용 데이터셋으로 등록.</p>
         <label>Dataset ID</label>
         <input value={exportId} onChange={(e) => setExportId(e.target.value)} />
         <div style={{ marginTop: 12 }}>
-          <button onClick={doExport} disabled={!exportId}>Export & Register</button>
+          <button onClick={doExport} disabled={!exportId}>내보내기 & 등록</button>
         </div>
       </div>
 

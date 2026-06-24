@@ -14,12 +14,12 @@ function App() {
   return (
     <BrowserRouter>
       <nav className="nav">
-        <span className="brand">🎙️ STT Tuner</span>
-        <Link to="/">Jobs</Link>
-        <Link to="/new">New Training</Link>
-        <Link to="/prepare">Prepare Data</Link>
-        <Link to="/test">Test</Link>
-        <Link to="/datasets">Datasets</Link>
+        <span className="brand">🎙️ STT 튜너</span>
+        <Link to="/">학습 작업</Link>
+        <Link to="/new">새 학습</Link>
+        <Link to="/prepare">데이터 준비</Link>
+        <Link to="/test">테스트</Link>
+        <Link to="/datasets">데이터셋</Link>
       </nav>
       <main className="container">
         <Routes>

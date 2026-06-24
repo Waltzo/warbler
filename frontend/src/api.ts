@@ -2,6 +2,14 @@ import axios from "axios";
 
 export const http = axios.create({ baseURL: "" });
 
+export const STATE_KO: Record<string, string> = {
+  pending: "대기",
+  running: "실행중",
+  done: "완료",
+  failed: "실패",
+  stopped: "중지됨",
+};
+
 export interface GpuStat {
   index: number;
   name: string;

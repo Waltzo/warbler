@@ -63,14 +63,14 @@ export default function NewJob() {
 
   return (
     <div>
-      <h1>New Training</h1>
+      <h1>새 학습</h1>
       <div className="card">
-        <label>Job name</label>
+        <label>작업 이름</label>
         <input value={cfg.name} onChange={(e) => set("name", e.target.value)} />
 
         <div className="grid">
           <div>
-            <label>Model type</label>
+            <label>모델 종류</label>
             <select value={cfg.model_type}
               onChange={(e) => set("model_type", e.target.value)}>
               <option value="whisper">whisper</option>
@@ -78,7 +78,7 @@ export default function NewJob() {
             </select>
           </div>
           <div>
-            <label>Base model</label>
+            <label>베이스 모델</label>
             <input list="models" value={cfg.base_model}
               onChange={(e) => set("base_model", e.target.value)} />
             <datalist id="models">
@@ -89,7 +89,7 @@ export default function NewJob() {
 
         <div className="grid">
           <div>
-            <label>Dataset</label>
+            <label>데이터셋</label>
             <select value={cfg.dataset_id} onChange={(e) => set("dataset_id", e.target.value)}>
               {datasets.map((d) => (
                 <option key={d.dataset_id} value={d.dataset_id}>
@@ -114,11 +114,11 @@ export default function NewJob() {
         {cfg.model_type === "whisper" && (
           <div className="grid">
             <div>
-              <label>Language</label>
+              <label>언어</label>
               <input value={cfg.language || ""} onChange={(e) => set("language", e.target.value)} />
             </div>
             <div>
-              <label>Task</label>
+              <label>작업</label>
               <select value={cfg.task} onChange={(e) => set("task", e.target.value)}>
                 <option value="transcribe">transcribe</option>
                 <option value="translate">translate</option>
@@ -129,19 +129,19 @@ export default function NewJob() {
       </div>
 
       <div className="card">
-        <h2>Hyperparameters</h2>
+        <h2>하이퍼파라미터</h2>
         <div className="grid">
-          <div><label>Learning rate</label><input type="number" step="any" value={cfg.learning_rate} onChange={num("learning_rate")} /></div>
-          <div><label>Batch size</label><input type="number" value={cfg.batch_size} onChange={num("batch_size")} /></div>
-          <div><label>Grad accumulation</label><input type="number" value={cfg.grad_accum} onChange={num("grad_accum")} /></div>
-          <div><label>Epochs</label><input type="number" step="any" value={cfg.num_epochs} onChange={num("num_epochs")} /></div>
-          <div><label>Max steps (-1 = use epochs)</label><input type="number" value={cfg.max_steps} onChange={num("max_steps")} /></div>
-          <div><label>Eval ratio</label><input type="number" step="any" value={cfg.eval_ratio} onChange={num("eval_ratio")} /></div>
-          <div><label>Eval steps</label><input type="number" value={cfg.eval_steps} onChange={num("eval_steps")} /></div>
-          <div><label>Save steps</label><input type="number" value={cfg.save_steps} onChange={num("save_steps")} /></div>
-          <div><label>Warmup steps</label><input type="number" value={cfg.warmup_steps} onChange={num("warmup_steps")} /></div>
+          <div><label>학습률 (learning rate)</label><input type="number" step="any" value={cfg.learning_rate} onChange={num("learning_rate")} /></div>
+          <div><label>배치 크기</label><input type="number" value={cfg.batch_size} onChange={num("batch_size")} /></div>
+          <div><label>Grad 누적 (accumulation)</label><input type="number" value={cfg.grad_accum} onChange={num("grad_accum")} /></div>
+          <div><label>에폭 (epochs)</label><input type="number" step="any" value={cfg.num_epochs} onChange={num("num_epochs")} /></div>
+          <div><label>최대 스텝 (-1 = 에폭 사용)</label><input type="number" value={cfg.max_steps} onChange={num("max_steps")} /></div>
+          <div><label>검증 비율 (eval ratio)</label><input type="number" step="any" value={cfg.eval_ratio} onChange={num("eval_ratio")} /></div>
+          <div><label>검증 주기 (eval steps)</label><input type="number" value={cfg.eval_steps} onChange={num("eval_steps")} /></div>
+          <div><label>저장 주기 (save steps)</label><input type="number" value={cfg.save_steps} onChange={num("save_steps")} /></div>
+          <div><label>워밍업 스텝 (warmup)</label><input type="number" value={cfg.warmup_steps} onChange={num("warmup_steps")} /></div>
           <div>
-            <label>Precision</label>
+            <label>정밀도 (precision)</label>
             <select value={cfg.precision} onChange={(e) => set("precision", e.target.value)}>
               <option value="fp16">fp16</option>
               <option value="bf16">bf16 (A100)</option>
@@ -156,7 +156,7 @@ export default function NewJob() {
           <label className="row" style={{ margin: 0 }}>
             <input type="checkbox" style={{ width: "auto" }} checked={cfg.use_lora}
               onChange={(e) => set("use_lora", e.target.checked)} />
-            &nbsp;Use LoRA (PEFT)
+            &nbsp;LoRA 사용 (PEFT)
           </label>
         </h2>
         {cfg.use_lora && (
@@ -168,7 +168,7 @@ export default function NewJob() {
         )}
       </div>
 
-      <button onClick={submit} disabled={!cfg.name || !cfg.dataset_id}>Start training</button>
+      <button onClick={submit} disabled={!cfg.name || !cfg.dataset_id}>학습 시작</button>
       {err && <p style={{ color: "#dc2626" }}>{err}</p>}
     </div>
   );

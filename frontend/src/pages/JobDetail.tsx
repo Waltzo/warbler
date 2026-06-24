@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import {
   CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend,
 } from "recharts";
-import { api, GpuStat, JobStatus, subscribeJob } from "../api";
+import { api, GpuStat, JobStatus, STATE_KO, subscribeJob } from "../api";
 
 interface Point { step: number; loss?: number; eval_loss?: number; wer?: number; cer?: number; }
 
@@ -60,7 +60,7 @@ export default function JobDetail() {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [log]);
 
-  if (!status) return <p>Loading…</p>;
+  if (!status) return <p>불러오는 중…</p>;
 
   const pct = status.total_steps
     ? Math.min(100, Math.round(((status.last_step || 0) / status.total_steps) * 100))
@@ -69,21 +69,21 @@ export default function JobDetail() {
 
   return (
     <div>
-      <h1>{status.name} <span className={`badge ${status.state}`}>{status.state}</span></h1>
+      <h1>{status.name} <span className={`badge ${status.state}`}>{STATE_KO[status.state] || status.state}</span></h1>
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div className="muted">
             {status.model_type} · {status.base_model} · dataset {status.dataset_id} · GPU {status.gpu_index}
           </div>
           {status.state === "running" && (
-            <button className="danger" onClick={() => api.stopJob(id!).then(setStatus)}>Stop</button>
+            <button className="danger" onClick={() => api.stopJob(id!).then(setStatus)}>중지</button>
           )}
         </div>
         <div style={{ marginTop: 10 }}>
-          Step {status.last_step ?? 0}{status.total_steps ? ` / ${status.total_steps}` : ""} ({pct}%)
+          스텝 {status.last_step ?? 0}{status.total_steps ? ` / ${status.total_steps}` : ""} ({pct}%)
           <div className="gpu-bar" style={{ marginTop: 4 }}><div style={{ width: `${pct}%` }} /></div>
         </div>
-        {status.error && <p style={{ color: "#dc2626" }}>Error: {status.error}</p>}
+        {status.error && <p style={{ color: "#dc2626" }}>오류: {status.error}</p>}
       </div>
 
       <div className="grid">
@@ -93,8 +93,8 @@ export default function JobDetail() {
             <LineChart data={points}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="step" /><YAxis /><Tooltip /><Legend />
-              <Line type="monotone" dataKey="loss" stroke="#2563eb" dot={false} name="train loss" connectNulls />
-              <Line type="monotone" dataKey="eval_loss" stroke="#dc2626" dot={false} name="eval loss" connectNulls />
+              <Line type="monotone" dataKey="loss" stroke="#2563eb" dot={false} name="학습 loss" connectNulls />
+              <Line type="monotone" dataKey="eval_loss" stroke="#dc2626" dot={false} name="검증 loss" connectNulls />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -120,12 +120,12 @@ export default function JobDetail() {
               <div style={{ width: `${(usedGpu.memory_used_mb / usedGpu.memory_total_mb) * 100}%` }} />
             </div>
           </div>
-        ) : <p className="muted">nvidia-smi unavailable.</p>}
+        ) : <p className="muted">nvidia-smi 사용 불가.</p>}
       </div>
 
       <div className="card">
-        <h2>Logs</h2>
-        <div className="log" ref={logRef}>{log || "(waiting for output…)"}</div>
+        <h2>로그</h2>
+        <div className="log" ref={logRef}>{log || "(출력 대기 중…)"}</div>
       </div>
     </div>
   );
