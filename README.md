@@ -13,7 +13,7 @@
 ### Backend + 학습 코어
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate
+python3.11 -m venv .venv && source .venv/bin/activate
 # A100 CUDA에 맞는 torch 먼저 설치 (예: cu121)
 pip install torch --index-url https://download.pytorch.org/whl/cu121
 pip install -r requirements.txt
@@ -80,13 +80,17 @@ manifest = `.jsonl` 또는 `.csv`, 각 행:
 ```toml
 [server]
 host = "0.0.0.0"
-port = 8000
+port = 8000        # 백엔드 port
 
 [gpu]
-default_index = 0   # UI New Training 기본 GPU
+default_index = 0  # UI New Training 기본 GPU
+
+[frontend]
+port = 5173        # Vite dev 서버 port (server.port로 API 프록시)
 ```
 
-우선순위: **환경변수 > config.toml > 기본값**. config 경로는 `STT_CONFIG`로 변경.
+우선순위: **환경변수 > config.toml > 기본값**. 백엔드 config 경로는 `STT_CONFIG`로 변경.
+프론트(vite)는 빌드 시 `../config.toml`에서 `frontend.port`(자기 port)와 `server.port`(프록시 대상)를 읽음.
 
 ## 환경변수
 
@@ -94,7 +98,8 @@ default_index = 0   # UI New Training 기본 GPU
 |------|------|------|
 | `STT_CONFIG` | `<root>/config.toml` | 설정 파일 경로 |
 | `STT_HOST` | config.toml / `0.0.0.0` | 서버 bind host |
-| `STT_PORT` | config.toml / `8000` | 서버 port |
+| `STT_PORT` | config.toml / `8000` | 백엔드 port (vite 프록시 대상도 겸함) |
+| `STT_FRONTEND_PORT` | config.toml / `5173` | vite dev 서버 port |
 | `STT_DEFAULT_GPU` | config.toml / `0` | UI 기본 GPU |
 | `STT_ROOT` | repo root | datasets/, runs/ 기준 경로 |
 | `STT_DATASETS_DIR` | `<root>/datasets` | 데이터셋 레지스트리 위치 |

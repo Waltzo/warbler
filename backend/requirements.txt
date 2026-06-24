@@ -4,6 +4,7 @@ uvicorn[standard]>=0.27
 pydantic>=2.6
 python-multipart>=0.0.9
 sse-starlette>=2.0
+tomli>=2.0; python_version < "3.11"  # config.toml 파싱 (3.11+은 stdlib tomllib)
 
 # Training core
 # NOTE: install torch matching your CUDA (A100). e.g.

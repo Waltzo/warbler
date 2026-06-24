@@ -1,8 +1,12 @@
 # STT Tuner 설정. 환경변수가 있으면 환경변수가 우선.
 [server]
 host = "0.0.0.0"
-port = 8000
+port = 8312
 
 [gpu]
 # UI New Training 폼의 기본 GPU. 4-GPU A100서 쓸 번호 지정.
-default_index = 0
+default_index = 2
+
+[frontend]
+# Vite dev 서버 port. 백엔드(server.port)로 API 프록시.
+port = 25173

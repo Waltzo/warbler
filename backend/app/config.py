@@ -4,8 +4,15 @@ Precedence: environment variable > config.toml > built-in default.
 config.toml lives at the project root (override path with STT_CONFIG).
 """
 import os
-import tomllib
 from pathlib import Path
+
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:  # Python 3.10 and older
+    try:
+        import tomli as tomllib  # pip install tomli
+    except ModuleNotFoundError:
+        tomllib = None
 
 # Project root = stt_tuner/  (two levels up from this file: app/ -> backend/ -> root)
 ROOT = Path(os.environ.get("STT_ROOT", Path(__file__).resolve().parents[2]))
@@ -16,11 +23,43 @@ ROOT = Path(os.environ.get("STT_ROOT", Path(__file__).resolve().parents[2]))
 _CONFIG_PATH = Path(os.environ.get("STT_CONFIG", ROOT / "config.toml"))
 
 
+def _parse_simple_toml(text: str) -> dict:
+    """Minimal TOML reader (sections + str/int/float/bool scalars). Used as a
+    dependency-free fallback when neither tomllib nor tomli is available."""
+    data: dict = {}
+    section = data
+    for raw in text.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            section = data.setdefault(line[1:-1].strip(), {})
+            continue
+        if "=" not in line:
+            continue
+        key, val = (s.strip() for s in line.split("=", 1))
+        if val and val[0] in "\"'":
+            section[key] = val.strip("\"'")
+        elif val in ("true", "false"):
+            section[key] = val == "true"
+        else:
+            try:
+                section[key] = int(val)
+            except ValueError:
+                try:
+                    section[key] = float(val)
+                except ValueError:
+                    section[key] = val
+    return data
+
+
 def _load_toml() -> dict:
-    if _CONFIG_PATH.exists():
+    if not _CONFIG_PATH.exists():
+        return {}
+    if tomllib is not None:
         with open(_CONFIG_PATH, "rb") as f:
             return tomllib.load(f)
-    return {}
+    return _parse_simple_toml(_CONFIG_PATH.read_text(encoding="utf-8"))
 
 
 _TOML = _load_toml()
