@@ -1,6 +1,6 @@
 # STT Tuner
 
-웹 기반 STT(음성인식) 모델 finetune 툴. Whisper / wav2vec2 지원, full finetune + LoRA, 실시간 진행 모니터링(loss/WER/CER, 로그, GPU). 단일사용자/내부용.
+웹 기반 STT(음성인식) 모델 finetune 툴. Whisper / wav2vec2 지원, full finetune + LoRA, 실시간 진행 모니터링(loss/WER/CER, 로그, GPU). 오디오만 있을 때 자동 분할+초벌전사+교정으로 데이터셋 준비(faster-whisper). 단일사용자/내부용.
 
 ```
 브라우저(React) ──HTTP/SSE──> FastAPI ──subprocess(CUDA_VISIBLE_DEVICES=N)──> training/train.py
@@ -50,6 +50,24 @@ npm run dev   # http://localhost:5173 , /jobs /datasets /system 은 :8000으로 
 - 동시 1개 잡만 허용 — 실행 중이면 새 잡 생성은 409.
 
 4-GPU A100에서 GPU 2번만 쓰려면 폼에서 GPU 2 선택. 프로세스 안에서는 그 GPU가 `cuda:0`으로 보임.
+
+## 데이터 준비 (오디오만 있을 때)
+
+전사(text)가 없고 오디오만 있으면 **Prepare Data** 페이지서 manifest까지 만든다:
+
+1. **Corpus 생성** — 오디오 폴더(서버 경로) 등록. 하위까지 스캔(wav/mp3/flac/m4a/ogg/opus).
+2. **자동 분할 + 초벌전사** — faster-whisper(기본 large-v3)가 긴 파일을 VAD로 발화단위 분할 + 구간별 초벌 텍스트 생성. GPU 잡(학습과 동일하게 GPU 지정, 동시 1개 락). 결과: `clips/*.wav`(16k mono) + `segments.jsonl`.
+3. **교정** — 각 segment 오디오 듣고 텍스트 수정 → "검토완료" 체크. "미검토만" 필터로 진행.
+4. **Export** — reviewed segment만 `manifest.jsonl`로 내보내 데이터셋 등록 → New Training서 바로 선택.
+
+저장: `datasets/<corpus_id>/{meta.json, clips/, segments.jsonl, manifest.jsonl}`.
+
+전사 코어 단독 실행:
+```bash
+cd backend
+CUDA_VISIBLE_DEVICES=2 python -m prep.transcribe \
+  --corpus-dir datasets/<id> --run-dir runs/<job_id> --model large-v3 --language ko
+```
 
 ## 데이터셋 형식
 

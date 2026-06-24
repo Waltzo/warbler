@@ -59,6 +59,27 @@ export interface TrainConfig {
   precision: "fp16" | "bf16" | "fp32";
 }
 
+export interface Corpus {
+  corpus_id: string;
+  audio_root: string;
+  num_files: number;
+  segments: number;
+  reviewed: number;
+  model?: string;
+}
+
+export interface Segment {
+  seg_id: string;
+  clip: string;
+  source_file: string;
+  start: number;
+  end: number;
+  duration: number;
+  draft_text: string;
+  text: string;
+  reviewed: boolean;
+}
+
 export const api = {
   gpus: () => http.get<GpuStat[]>("/system/gpus").then((r) => r.data),
   info: () => http.get<{ default_gpu_index: number; suggested_models: Record<string, string[]> }>("/system/info").then((r) => r.data),
@@ -74,6 +95,22 @@ export const api = {
   metrics: (id: string) => http.get<any[]>(`/jobs/${id}/metrics`).then((r) => r.data),
   createJob: (cfg: TrainConfig) => http.post<JobStatus>("/jobs", cfg).then((r) => r.data),
   stopJob: (id: string) => http.post<JobStatus>(`/jobs/${id}/stop`).then((r) => r.data),
+
+  corpora: () => http.get<Corpus[]>("/corpus").then((r) => r.data),
+  corpus: (id: string) => http.get<Corpus>(`/corpus/${id}`).then((r) => r.data),
+  createCorpus: (body: { corpus_id: string; audio_root: string }) =>
+    http.post<Corpus>("/corpus", body).then((r) => r.data),
+  transcribe: (id: string, body: { model: string; language: string; gpu_index: number }) =>
+    http.post<JobStatus>(`/corpus/${id}/transcribe`, body).then((r) => r.data),
+  segments: (id: string, onlyUnreviewed: boolean, limit = 200, offset = 0) =>
+    http.get<{ total: number; items: Segment[] }>(`/corpus/${id}/segments`, {
+      params: { only_unreviewed: onlyUnreviewed, limit, offset },
+    }).then((r) => r.data),
+  segmentAudioUrl: (id: string, segId: string) => `/corpus/${id}/segments/${segId}/audio`,
+  patchSegment: (id: string, segId: string, body: { text?: string; reviewed?: boolean }) =>
+    http.patch<Segment>(`/corpus/${id}/segments/${segId}`, body).then((r) => r.data),
+  exportCorpus: (id: string, body: { dataset_id: string; only_reviewed: boolean }) =>
+    http.post<DatasetInfo>(`/corpus/${id}/export`, body).then((r) => r.data),
 };
 
 /** Subscribe to a job's SSE stream. Returns an unsubscribe fn. */

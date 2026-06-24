@@ -92,38 +92,28 @@ def active_job() -> Optional[str]:
     return None
 
 
-def start_job(cfg: TrainConfig, manifest_path: str, audio_root: str) -> dict:
-    """Launch a training subprocess. Raises RuntimeError if one is already running."""
+def _new_job_id() -> str:
+    return time.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:6]
+
+
+def _launch(status: dict, cmd: list[str], gpu_index: int) -> dict:
+    """Common subprocess launch: enforce single-job lock, pin GPU, write status.
+    `status` must already contain job_id/kind/etc.; run_dir must exist."""
     running = active_job()
     if running:
         raise RuntimeError(f"A job is already running: {running}")
 
-    job_id = time.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:6]
+    job_id = status["job_id"]
     run_dir = RUNS_DIR / job_id
-    run_dir.mkdir(parents=True, exist_ok=True)
-
-    # Merge resolved dataset paths into the config consumed by train.py.
-    cfg_dict = cfg.model_dump()
-    cfg_dict["manifest_path"] = manifest_path
-    cfg_dict["audio_root"] = audio_root
-    (run_dir / "config.json").write_text(json.dumps(cfg_dict, ensure_ascii=False, indent=2))
-
-    status = {
-        "job_id": job_id,
-        "name": cfg.name,
-        "state": "pending",
-        "model_type": cfg.model_type,
-        "base_model": cfg.base_model,
-        "dataset_id": cfg.dataset_id,
-        "created_at": _now(),
-        "gpu_index": cfg.gpu_index,
-    }
+    status["state"] = "pending"
+    status["created_at"] = _now()
+    status["gpu_index"] = gpu_index
     (run_dir / "status.json").write_text(json.dumps(status, ensure_ascii=False, indent=2))
 
-    env = {**os.environ, "CUDA_VISIBLE_DEVICES": str(cfg.gpu_index)}
+    env = {**os.environ, "CUDA_VISIBLE_DEVICES": str(gpu_index)}
     log_file = open(run_dir / "train.log", "w")
     proc = subprocess.Popen(
-        [config.PYTHON_BIN, "-m", "training.train", "--config", str(run_dir / "config.json")],
+        cmd,
         cwd=str(Path(__file__).resolve().parents[2]),  # backend/
         env=env,
         stdout=log_file,
@@ -136,6 +126,59 @@ def start_job(cfg: TrainConfig, manifest_path: str, audio_root: str) -> dict:
     status["started_at"] = _now()
     (run_dir / "status.json").write_text(json.dumps(status, ensure_ascii=False, indent=2))
     return status
+
+
+def start_job(cfg: TrainConfig, manifest_path: str, audio_root: str) -> dict:
+    """Launch a training subprocess. Raises RuntimeError if one is already running."""
+    if active_job():
+        raise RuntimeError(f"A job is already running: {active_job()}")
+
+    job_id = _new_job_id()
+    run_dir = RUNS_DIR / job_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    # Merge resolved dataset paths into the config consumed by train.py.
+    cfg_dict = cfg.model_dump()
+    cfg_dict["manifest_path"] = manifest_path
+    cfg_dict["audio_root"] = audio_root
+    (run_dir / "config.json").write_text(json.dumps(cfg_dict, ensure_ascii=False, indent=2))
+
+    status = {
+        "job_id": job_id,
+        "kind": "train",
+        "name": cfg.name,
+        "model_type": cfg.model_type,
+        "base_model": cfg.base_model,
+        "dataset_id": cfg.dataset_id,
+    }
+    cmd = [config.PYTHON_BIN, "-m", "training.train",
+           "--config", str(run_dir / "config.json")]
+    return _launch(status, cmd, cfg.gpu_index)
+
+
+def start_transcribe_job(corpus_id: str, corpus_dir: str, model: str,
+                         gpu_index: int, language: str = "ko") -> dict:
+    """Launch a faster-whisper transcription subprocess for a corpus."""
+    if active_job():
+        raise RuntimeError(f"A job is already running: {active_job()}")
+
+    job_id = _new_job_id()
+    run_dir = RUNS_DIR / job_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    status = {
+        "job_id": job_id,
+        "kind": "transcribe",
+        "name": f"transcribe:{corpus_id}",
+        "corpus_id": corpus_id,
+        "model_type": "faster-whisper",
+        "base_model": model,
+        "dataset_id": corpus_id,
+    }
+    cmd = [config.PYTHON_BIN, "-m", "prep.transcribe",
+           "--corpus-dir", str(corpus_dir), "--run-dir", str(run_dir),
+           "--model", model, "--language", language]
+    return _launch(status, cmd, gpu_index)
 
 
 def stop_job(job_id: str) -> dict:

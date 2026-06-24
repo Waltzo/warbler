@@ -40,6 +40,7 @@ export default defineConfig({
       "/datasets": target,
       "/jobs": target,
       "/system": target,
+      "/corpus": target,
       "/health": target,
     },
   },

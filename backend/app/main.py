@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import datasets, jobs, system
+from .api import corpus, datasets, jobs, system
 
 app = FastAPI(title="STT Tuner")
 
@@ -16,6 +16,7 @@ app.add_middleware(
 app.include_router(datasets.router)
 app.include_router(jobs.router)
 app.include_router(system.router)
+app.include_router(corpus.router)
 
 
 @app.get("/health")
