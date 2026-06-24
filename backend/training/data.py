@@ -14,8 +14,12 @@ from typing import Any
 SAMPLING_RATE = 16000
 
 
-def read_manifest(manifest_path: str, audio_root: str | None = None) -> list[dict]:
-    """Parse a .jsonl or .csv manifest into a list of {audio, text} rows."""
+def read_manifest(manifest_path: str, audio_root: str | None = None,
+                  audio_key: str | None = None, text_key: str | None = None) -> list[dict]:
+    """Parse a .jsonl or .csv manifest into a list of {audio, text} rows.
+
+    audio_key/text_key override the column names. If not given, common aliases
+    are tried (audio_path/audio/path, text/transcript/sentence)."""
     mpath = Path(manifest_path)
     root = Path(audio_root) if audio_root else mpath.parent
     rows: list[dict] = []
@@ -30,20 +34,24 @@ def read_manifest(manifest_path: str, audio_root: str | None = None) -> list[dic
         raise ValueError(f"Unsupported manifest type: {mpath.suffix} (use .jsonl or .csv)")
 
     for r in raw:
-        ap = r.get("audio_path") or r.get("audio") or r.get("path")
-        text = r.get("text") or r.get("transcript") or r.get("sentence")
+        ap = r.get(audio_key) if audio_key else (
+            r.get("audio_path") or r.get("audio") or r.get("path"))
+        text = r.get(text_key) if text_key else (
+            r.get("text") or r.get("transcript") or r.get("sentence"))
         if ap is None or text is None:
-            raise ValueError(f"Manifest row missing audio_path/text: {r}")
+            want = f"'{audio_key or 'audio_path'}' / '{text_key or 'text'}'"
+            raise ValueError(f"Manifest row missing {want}: {r}")
         ap = ap if os.path.isabs(ap) else str(root / ap)
         rows.append({"audio": ap, "text": str(text)})
     return rows
 
 
-def build_dataset(manifest_path: str, audio_root: str | None, eval_ratio: float):
+def build_dataset(manifest_path: str, audio_root: str | None, eval_ratio: float,
+                  audio_key: str | None = None, text_key: str | None = None):
     """Return (train_ds, eval_ds) HF Datasets with a 16kHz Audio column."""
     from datasets import Audio, Dataset
 
-    rows = read_manifest(manifest_path, audio_root)
+    rows = read_manifest(manifest_path, audio_root, audio_key, text_key)
     ds = Dataset.from_list(rows).cast_column("audio", Audio(sampling_rate=SAMPLING_RATE))
 
     if eval_ratio and 0 < eval_ratio < 1 and len(ds) > 1:

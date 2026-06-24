@@ -128,7 +128,8 @@ def _launch(status: dict, cmd: list[str], gpu_index: int) -> dict:
     return status
 
 
-def start_job(cfg: TrainConfig, manifest_path: str, audio_root: str) -> dict:
+def start_job(cfg: TrainConfig, manifest_path: str, audio_root: str,
+              audio_key: str = None, text_key: str = None) -> dict:
     """Launch a training subprocess. Raises RuntimeError if one is already running."""
     if active_job():
         raise RuntimeError(f"A job is already running: {active_job()}")
@@ -141,6 +142,8 @@ def start_job(cfg: TrainConfig, manifest_path: str, audio_root: str) -> dict:
     cfg_dict = cfg.model_dump()
     cfg_dict["manifest_path"] = manifest_path
     cfg_dict["audio_root"] = audio_root
+    cfg_dict["audio_key"] = audio_key
+    cfg_dict["text_key"] = text_key
     (run_dir / "config.json").write_text(json.dumps(cfg_dict, ensure_ascii=False, indent=2))
 
     status = {

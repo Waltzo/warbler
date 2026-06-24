@@ -20,7 +20,8 @@ def create_job(cfg: TrainConfig) -> dict:
         raise HTTPException(400, f"gpu_index {cfg.gpu_index} out of range (0..{n_gpu - 1})")
 
     try:
-        return job_manager.start_job(cfg, ds["manifest_path"], ds["audio_root"])
+        return job_manager.start_job(cfg, ds["manifest_path"], ds["audio_root"],
+                                     ds.get("audio_key"), ds.get("text_key"))
     except RuntimeError as e:
         raise HTTPException(409, str(e))
 

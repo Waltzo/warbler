@@ -3,7 +3,8 @@ import { api, DatasetInfo } from "../api";
 
 export default function Datasets() {
   const [list, setList] = useState<DatasetInfo[]>([]);
-  const [form, setForm] = useState({ dataset_id: "", manifest_path: "", audio_root: "" });
+  const [form, setForm] = useState({ dataset_id: "", manifest_path: "", audio_root: "",
+    audio_key: "", text_key: "" });
   const [preview, setPreview] = useState<DatasetInfo | null>(null);
   const [err, setErr] = useState("");
 
@@ -17,6 +18,8 @@ export default function Datasets() {
         dataset_id: form.dataset_id,
         manifest_path: form.manifest_path,
         audio_root: form.audio_root || undefined,
+        audio_key: form.audio_key || undefined,
+        text_key: form.text_key || undefined,
       });
       setPreview(info);
       reload();
@@ -43,6 +46,18 @@ export default function Datasets() {
         <label>오디오 루트 (선택, 미지정 시 manifest 폴더)</label>
         <input value={form.audio_root}
           onChange={(e) => setForm({ ...form, audio_root: e.target.value })} />
+        <div className="grid">
+          <div>
+            <label>오디오 키 (선택, 기본 audio_path/audio/path)</label>
+            <input value={form.audio_key} placeholder="예: filepath"
+              onChange={(e) => setForm({ ...form, audio_key: e.target.value })} />
+          </div>
+          <div>
+            <label>텍스트 키 (선택, 기본 text/transcript/sentence)</label>
+            <input value={form.text_key} placeholder="예: label"
+              onChange={(e) => setForm({ ...form, text_key: e.target.value })} />
+          </div>
+        </div>
         <div style={{ marginTop: 12 }}>
           <button onClick={submit}>등록</button>
         </div>

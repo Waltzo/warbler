@@ -39,7 +39,8 @@ def _run(cfg: dict, run_dir: Path) -> None:
 
     print(f"[train] loading dataset {cfg['dataset_id']}", flush=True)
     train_ds, eval_ds = build_dataset(
-        cfg["manifest_path"], cfg.get("audio_root"), cfg.get("eval_ratio", 0.1)
+        cfg["manifest_path"], cfg.get("audio_root"), cfg.get("eval_ratio", 0.1),
+        cfg.get("audio_key"), cfg.get("text_key"),
     )
     print(f"[train] train={len(train_ds)} eval={len(eval_ds) if eval_ds else 0}", flush=True)
 

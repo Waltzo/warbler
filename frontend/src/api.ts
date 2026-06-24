@@ -94,8 +94,10 @@ export const api = {
 
   datasets: () => http.get<DatasetInfo[]>("/datasets").then((r) => r.data),
   datasetDetail: (id: string) => http.get<DatasetInfo>(`/datasets/${id}`).then((r) => r.data),
-  registerDataset: (body: { dataset_id: string; manifest_path: string; audio_root?: string }) =>
-    http.post<DatasetInfo>("/datasets", body).then((r) => r.data),
+  registerDataset: (body: {
+    dataset_id: string; manifest_path: string; audio_root?: string;
+    audio_key?: string; text_key?: string;
+  }) => http.post<DatasetInfo>("/datasets", body).then((r) => r.data),
   deleteDataset: (id: string) => http.delete(`/datasets/${id}`).then((r) => r.data),
 
   jobs: () => http.get<JobStatus[]>("/jobs").then((r) => r.data),

@@ -46,6 +46,12 @@ class DatasetRegister(BaseModel):
     audio_root: Optional[str] = Field(
         None, description="Base dir to resolve relative audio_path (defaults to manifest dir)"
     )
+    audio_key: Optional[str] = Field(
+        None, description="Custom column name for audio path (default: audio_path/audio/path)"
+    )
+    text_key: Optional[str] = Field(
+        None, description="Custom column name for transcript (default: text/transcript/sentence)"
+    )
 
 
 class DatasetInfo(BaseModel):
@@ -54,6 +60,8 @@ class DatasetInfo(BaseModel):
     audio_root: str
     num_samples: int
     total_duration_sec: Optional[float] = None
+    audio_key: Optional[str] = None
+    text_key: Optional[str] = None
     preview: list[dict]
 
 

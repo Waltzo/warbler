@@ -27,12 +27,13 @@ def _save_registry(reg: dict) -> None:
     REGISTRY.write_text(json.dumps(reg, ensure_ascii=False, indent=2))
 
 
-def _read_manifest_rows(manifest_path: str, audio_root: str | None) -> list[dict]:
+def _read_manifest_rows(manifest_path: str, audio_root: str | None,
+                        audio_key: str | None = None, text_key: str | None = None) -> list[dict]:
     # Reuse the training-side parser to guarantee identical semantics.
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # backend/
     from training.data import read_manifest
-    return read_manifest(manifest_path, audio_root)
+    return read_manifest(manifest_path, audio_root, audio_key, text_key)
 
 
 def get_dataset(dataset_id: str) -> dict:
@@ -49,7 +50,7 @@ def register(req: DatasetRegister) -> DatasetInfo:
     audio_root = req.audio_root or str(Path(req.manifest_path).parent)
 
     try:
-        rows = _read_manifest_rows(req.manifest_path, audio_root)
+        rows = _read_manifest_rows(req.manifest_path, audio_root, req.audio_key, req.text_key)
     except Exception as e:  # noqa: BLE001
         raise HTTPException(400, f"Failed to parse manifest: {e}")
 
@@ -68,6 +69,8 @@ def register(req: DatasetRegister) -> DatasetInfo:
         "manifest_path": req.manifest_path,
         "audio_root": audio_root,
         "num_samples": len(rows),
+        "audio_key": req.audio_key,
+        "text_key": req.text_key,
     }
     _save_registry(reg)
 
@@ -76,6 +79,8 @@ def register(req: DatasetRegister) -> DatasetInfo:
         manifest_path=req.manifest_path,
         audio_root=audio_root,
         num_samples=len(rows),
+        audio_key=req.audio_key,
+        text_key=req.text_key,
         preview=[{"audio": Path(r["audio"]).name, "text": r["text"]}
                  for r in rows[: config.PREVIEW_ROWS]],
     )
@@ -91,6 +96,8 @@ def list_datasets() -> list[DatasetInfo]:
             manifest_path=d["manifest_path"],
             audio_root=d["audio_root"],
             num_samples=d.get("num_samples", 0),
+            audio_key=d.get("audio_key"),
+            text_key=d.get("text_key"),
             preview=[],
         ))
     return out
@@ -99,12 +106,15 @@ def list_datasets() -> list[DatasetInfo]:
 @router.get("/{dataset_id}", response_model=DatasetInfo)
 def dataset_detail(dataset_id: str) -> DatasetInfo:
     d = get_dataset(dataset_id)
-    rows = _read_manifest_rows(d["manifest_path"], d["audio_root"])
+    rows = _read_manifest_rows(d["manifest_path"], d["audio_root"],
+                               d.get("audio_key"), d.get("text_key"))
     return DatasetInfo(
         dataset_id=d["dataset_id"],
         manifest_path=d["manifest_path"],
         audio_root=d["audio_root"],
         num_samples=len(rows),
+        audio_key=d.get("audio_key"),
+        text_key=d.get("text_key"),
         preview=[{"audio": Path(r["audio"]).name, "text": r["text"]}
                  for r in rows[: config.PREVIEW_ROWS]],
     )
