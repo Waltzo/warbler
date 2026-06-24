@@ -13,6 +13,16 @@ from .data import CTCCollator, WhisperCollator, load_audio
 from .metrics import compute_wer_cer
 
 
+def _log_samples(refs: list[str], hyps: list[str], n: int = 5) -> None:
+    """Print a few (정답/예측) pairs so eval WER/CER can be sanity-checked from
+    the log — a number alone can't tell garbage output from a metric bug."""
+    print("[eval] 샘플 정답 vs 예측:", flush=True)
+    for r, h in zip(refs[:n], hyps[:n]):
+        print(f"  정답: {r!r}", flush=True)
+        print(f"  예측: {h!r}", flush=True)
+        print("  ---", flush=True)
+
+
 @dataclass
 class ModelBundle:
     processor: Any
@@ -68,6 +78,7 @@ def _build_whisper(cfg: dict) -> ModelBundle:
         label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
         hyps = processor.tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
         refs = processor.tokenizer.batch_decode(label_ids, skip_special_tokens=True)
+        _log_samples(refs, hyps)
         return compute_wer_cer(refs, hyps)
 
     return ModelBundle(
@@ -160,6 +171,7 @@ def _build_wav2vec2(cfg: dict, train_texts: list[str], run_dir: Optional[Path]) 
         label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
         hyps = processor.batch_decode(pred_ids)
         refs = processor.batch_decode(label_ids, group_tokens=False)
+        _log_samples(refs, hyps)
         return compute_wer_cer(refs, hyps)
 
     return ModelBundle(
