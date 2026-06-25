@@ -52,8 +52,15 @@ def _build_whisper(cfg: dict) -> ModelBundle:
     lang = cfg.get("language")
     task = cfg.get("task", "transcribe")
 
+    import torch
+
     processor = WhisperProcessor.from_pretrained(base, language=lang, task=task)
-    model = WhisperForConditionalGeneration.from_pretrained(base)
+    # whisper-large-v3 체크포인트는 fp16으로 저장돼 있고, 최신 transformers는
+    # 원본 dtype을 따라 fp16으로 로드한다. fp16 마스터 가중치는 bf16 autocast와
+    # 충돌해 grad_norm=nan을 내고, eval generate는 conv에서 (float input vs Half
+    # bias) dtype 크래시를 낸다. fp32로 강제 로드 → bf16/fp16 mixed-precision은
+    # Trainer의 autocast가 처리한다.
+    model = WhisperForConditionalGeneration.from_pretrained(base, torch_dtype=torch.float32)
 
     model.generation_config.language = lang
     model.generation_config.task = task
