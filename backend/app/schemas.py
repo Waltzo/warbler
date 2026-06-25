@@ -29,6 +29,8 @@ class TrainConfig(BaseModel):
     eval_steps: int = 50
     save_steps: int = 200
     warmup_steps: int = 50
+    # None => keep every checkpoint (lets a specific step be promoted later).
+    save_total_limit: Optional[int] = None
 
     # Whisper-specific
     language: Optional[str] = None  # e.g. "korean"

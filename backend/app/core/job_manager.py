@@ -215,3 +215,71 @@ def read_metrics(job_id: str) -> list[dict]:
             except json.JSONDecodeError:
                 pass
     return out
+
+
+# --- checkpoint promotion --------------------------------------------------
+# Training-only files in a checkpoint — useless for inference, skipped on
+# promotion to avoid bloating model/ (optimizer state alone can be GBs).
+_PROMOTE_SKIP = {"optimizer.pt", "scheduler.pt", "trainer_state.json",
+                 "training_args.bin", "scaler.pt", "rng_state.pth"}
+
+
+def _promoted_step(job_id: str) -> Optional[int]:
+    p = RUNS_DIR / job_id / "model" / "PROMOTED.json"
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text()).get("step")
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def list_checkpoints(job_id: str) -> list[dict]:
+    """Saved checkpoints with their eval metrics, sorted by step. `promoted`
+    marks which one currently backs the served model/ (None = the auto best)."""
+    run_dir = RUNS_DIR / job_id
+    ck_dir = run_dir / "checkpoints"
+    evals = {m["step"]: m for m in read_metrics(job_id)
+             if m.get("event") == "eval" and "step" in m}
+    promoted = _promoted_step(job_id)
+    out = []
+    if ck_dir.exists():
+        for d in ck_dir.glob("checkpoint-*"):
+            if not d.is_dir():
+                continue
+            try:
+                step = int(d.name.split("-")[-1])
+            except ValueError:
+                continue
+            ev = evals.get(step, {})
+            out.append({"step": step, "loss": ev.get("loss"),
+                        "wer": ev.get("wer"), "cer": ev.get("cer"),
+                        "promoted": step == promoted})
+    out.sort(key=lambda x: x["step"])
+    return out
+
+
+def promote_checkpoint(job_id: str, step: int) -> dict:
+    """Overlay checkpoint-<step>'s weights/adapter onto model/, keeping the
+    existing processor (tokenizer/vocab are identical across steps). The served
+    model then uses that step. Raises FileNotFoundError / RuntimeError on bad
+    input. NOTE: assumes a single-file (or same-sharding) weight layout, which
+    holds for LoRA adapters and non-sharded full models."""
+    import shutil
+
+    run_dir = RUNS_DIR / job_id
+    if read_status(job_id) is None:
+        raise FileNotFoundError(job_id)
+    src = run_dir / "checkpoints" / f"checkpoint-{step}"
+    if not src.is_dir():
+        raise FileNotFoundError(f"checkpoint-{step}")
+    model_dir = run_dir / "model"
+    if not model_dir.exists():
+        raise RuntimeError("model/ does not exist yet (training not finished)")
+
+    for f in src.iterdir():
+        if f.is_file() and f.name not in _PROMOTE_SKIP:
+            shutil.copy2(f, model_dir / f.name)
+    (model_dir / "PROMOTED.json").write_text(
+        json.dumps({"step": step}, ensure_ascii=False))
+    return {"job_id": job_id, "promoted_step": step}

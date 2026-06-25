@@ -59,6 +59,24 @@ def stop(job_id: str) -> dict:
         raise HTTPException(404, job_id)
 
 
+@router.get("/{job_id}/checkpoints")
+def checkpoints(job_id: str) -> list[dict]:
+    if not job_manager.read_status(job_id):
+        raise HTTPException(404, job_id)
+    return job_manager.list_checkpoints(job_id)
+
+
+@router.post("/{job_id}/promote")
+def promote(job_id: str, step: int) -> dict:
+    """Promote checkpoint-<step> to the served model/. `step` is a query param."""
+    try:
+        return job_manager.promote_checkpoint(job_id, step)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+    except RuntimeError as e:
+        raise HTTPException(409, str(e))
+
+
 @router.get("/{job_id}/stream")
 async def stream(job_id: str):
     if not job_manager.read_status(job_id):

@@ -61,6 +61,15 @@ def _run(cfg: dict, run_dir: Path) -> None:
     fp16 = precision == "fp16" and torch.cuda.is_available()
     bf16 = precision == "bf16" and torch.cuda.is_available()
 
+    do_eval = eval_ds is not None
+    eval_steps = cfg.get("eval_steps", 50)
+    save_steps = cfg.get("save_steps", 200)
+    # load_best_model_at_end requires save_steps to be a round multiple of
+    # eval_steps. If misconfigured, align them so the best checkpoint is the one
+    # actually restored at the end (otherwise it would silently disable).
+    if do_eval and save_steps % eval_steps != 0:
+        save_steps = eval_steps
+
     out_dir = str(run_dir / "checkpoints")
     common = dict(
         output_dir=out_dir,
@@ -74,16 +83,23 @@ def _run(cfg: dict, run_dir: Path) -> None:
         fp16=fp16,
         bf16=bf16,
         logging_steps=cfg.get("logging_steps", 10),
-        save_steps=cfg.get("save_steps", 200),
-        save_total_limit=2,
+        save_steps=save_steps,
+        # Keep every checkpoint so a specific step can be promoted to the served
+        # model later. save_total_limit=None disables pruning.
+        save_total_limit=cfg.get("save_total_limit"),
         report_to=[],
         remove_unused_columns=False,
     )
-    do_eval = eval_ds is not None
     eval_args = dict(
         eval_strategy="steps" if do_eval else "no",
-        eval_steps=cfg.get("eval_steps", 50),
+        eval_steps=eval_steps,
     )
+    # Restore the lowest eval_loss checkpoint into model/ at the end of training.
+    best_args = dict(
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_loss",
+        greater_is_better=False,
+    ) if do_eval else {}
 
     callback = ProgressCallback(run_dir)
 
@@ -91,7 +107,8 @@ def _run(cfg: dict, run_dir: Path) -> None:
         from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
 
         args = Seq2SeqTrainingArguments(
-            **common, **eval_args, predict_with_generate=True, generation_max_length=225
+            **common, **eval_args, **best_args,
+            predict_with_generate=True, generation_max_length=225,
         )
         trainer = Seq2SeqTrainer(
             args=args,
@@ -106,7 +123,7 @@ def _run(cfg: dict, run_dir: Path) -> None:
     else:
         from transformers import Trainer, TrainingArguments
 
-        args = TrainingArguments(**common, **eval_args)
+        args = TrainingArguments(**common, **eval_args, **best_args)
         trainer = Trainer(
             args=args,
             model=bundle.model,
