@@ -51,6 +51,14 @@ def get_metrics(job_id: str) -> list[dict]:
     return job_manager.read_metrics(job_id)
 
 
+@router.get("/{job_id}/config")
+def get_config(job_id: str) -> dict:
+    cfg = job_manager.read_config(job_id)
+    if cfg is None:
+        raise HTTPException(404, job_id)
+    return cfg
+
+
 @router.post("/{job_id}/stop")
 def stop(job_id: str) -> dict:
     try:

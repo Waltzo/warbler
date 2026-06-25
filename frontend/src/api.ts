@@ -61,6 +61,7 @@ export interface TrainConfig {
   eval_steps: number;
   save_steps: number;
   warmup_steps: number;
+  save_total_limit?: number | null;
   language?: string;
   task: string;
   gpu_index: number;
@@ -103,6 +104,7 @@ export const api = {
   jobs: () => http.get<JobStatus[]>("/jobs").then((r) => r.data),
   job: (id: string) => http.get<JobStatus>(`/jobs/${id}`).then((r) => r.data),
   metrics: (id: string) => http.get<any[]>(`/jobs/${id}/metrics`).then((r) => r.data),
+  config: (id: string) => http.get<TrainConfig>(`/jobs/${id}/config`).then((r) => r.data),
   createJob: (cfg: TrainConfig) => http.post<JobStatus>("/jobs", cfg).then((r) => r.data),
   stopJob: (id: string) => http.post<JobStatus>(`/jobs/${id}/stop`).then((r) => r.data),
 

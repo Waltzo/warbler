@@ -41,6 +41,16 @@ def read_status(job_id: str) -> Optional[dict]:
         return None
 
 
+def read_config(job_id: str) -> Optional[dict]:
+    p = RUNS_DIR / job_id / "config.json"
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text())
+    except json.JSONDecodeError:
+        return None
+
+
 def _pid_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)

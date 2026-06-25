@@ -26,7 +26,7 @@ export default function Jobs() {
               <tr key={j.job_id}>
                 <td><Link className="joblink" to={`/jobs/${j.job_id}`}>{j.name}</Link></td>
                 <td><span className={`badge ${j.state}`}>{STATE_KO[j.state] || j.state}</span></td>
-                <td>{j.model_type}<br /><span className="muted">{j.base_model}</span></td>
+                <td>{j.model_type} <span className="muted">{j.base_model}</span></td>
                 <td>{j.dataset_id}</td>
                 <td>{j.gpu_index ?? "-"}</td>
                 <td>{j.last_step ?? 0}{j.total_steps ? ` / ${j.total_steps}` : ""}</td>

@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import {
   CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend,
 } from "recharts";
-import { api, GpuStat, JobStatus, STATE_KO, subscribeJob } from "../api";
+import { api, GpuStat, JobStatus, STATE_KO, subscribeJob, TrainConfig } from "../api";
 
 interface Point { step: number; loss?: number; eval_loss?: number; wer?: number; cer?: number; }
 
@@ -27,6 +27,7 @@ function mergeMetric(points: Point[], m: any): Point[] {
 export default function JobDetail() {
   const { id } = useParams();
   const [status, setStatus] = useState<JobStatus | null>(null);
+  const [cfg, setCfg] = useState<TrainConfig | null>(null);
   const [points, setPoints] = useState<Point[]>([]);
   const [log, setLog] = useState("");
   const [gpus, setGpus] = useState<GpuStat[]>([]);
@@ -36,6 +37,7 @@ export default function JobDetail() {
   useEffect(() => {
     if (!id) return;
     api.job(id).then(setStatus);
+    api.config(id).then(setCfg).catch(() => setCfg(null));
     api.metrics(id).then((ms) => {
       let pts: Point[] = [];
       ms.forEach((m) => { pts = mergeMetric(pts, m); });
@@ -79,7 +81,7 @@ export default function JobDetail() {
   return (
     <div>
       <h1>{status.name} <span className={`badge ${status.state}`}>{STATE_KO[status.state] || status.state}</span></h1>
-      <div className="card">
+      <div className="card compact">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div className="muted">
             {status.model_type} · {status.base_model} · dataset {status.dataset_id} · GPU {status.gpu_index}
@@ -88,17 +90,19 @@ export default function JobDetail() {
             <button className="danger" onClick={() => api.stopJob(id!).then(setStatus)}>중지</button>
           )}
         </div>
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 8 }}>
           스텝 {status.last_step ?? 0}{status.total_steps ? ` / ${status.total_steps}` : ""} ({pct}%)
           <div className="gpu-bar" style={{ marginTop: 4 }}><div style={{ width: `${pct}%` }} /></div>
         </div>
         {status.error && <p style={{ color: "#dc2626" }}>오류: {status.error}</p>}
       </div>
 
+      {cfg && <ConfigCard cfg={cfg} />}
+
       <div className="grid">
-        <div className="card">
+        <div className="card compact">
           <h2>Loss</h2>
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={200}>
             <LineChart data={points}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="step" /><YAxis /><Tooltip /><Legend />
@@ -107,9 +111,9 @@ export default function JobDetail() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <div className="card">
+        <div className="card compact">
           <h2>WER / CER</h2>
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={200}>
             <LineChart data={points}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="step" /><YAxis /><Tooltip /><Legend />
@@ -120,7 +124,7 @@ export default function JobDetail() {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card compact">
         <h2>GPU {status.gpu_index}</h2>
         {usedGpu ? (
           <div>
@@ -132,9 +136,38 @@ export default function JobDetail() {
         ) : <p className="muted">nvidia-smi 사용 불가.</p>}
       </div>
 
-      <div className="card">
+      <div className="card compact">
         <h2>로그</h2>
         <div className="log" ref={logRef} onScroll={onLogScroll}>{log || "(출력 대기 중…)"}</div>
+      </div>
+    </div>
+  );
+}
+
+function ConfigCard({ cfg }: { cfg: TrainConfig }) {
+  const effBatch = cfg.batch_size * cfg.grad_accum;
+  const rows: [string, any][] = [
+    ["precision", cfg.precision],
+    ["learning_rate", cfg.learning_rate],
+    ["batch", `${cfg.batch_size}×${cfg.grad_accum}=${effBatch}`],
+    ["epochs", cfg.num_epochs],
+    ["max_steps", cfg.max_steps],
+    ["warmup", cfg.warmup_steps],
+    ["eval_steps", cfg.eval_steps],
+    ["save_steps", cfg.save_steps],
+    ["eval_ratio", cfg.eval_ratio],
+    ["save_limit", cfg.save_total_limit ?? "전체"],
+    ["language", cfg.language ?? "-"],
+    ["task", cfg.task],
+    ["LoRA", cfg.use_lora ? `r${cfg.lora_r} α${cfg.lora_alpha} d${cfg.lora_dropout}` : "off"],
+  ];
+  return (
+    <div className="card compact">
+      <h2>설정</h2>
+      <div className="kv">
+        {rows.map(([k, v]) => (
+          <div key={k}><span className="k">{k}</span><span className="v">{String(v)}</span></div>
+        ))}
       </div>
     </div>
   );
